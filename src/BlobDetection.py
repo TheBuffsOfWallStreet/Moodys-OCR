@@ -69,3 +69,22 @@ def detectBlobs(image_mask):
                             q.append((i, j))
                 blobs.append(new_blob)
     return blobs
+
+
+def detectBlobBounds(image_mask):
+    blobs = detectBlobs(image_mask)
+    bounds = []
+    for blob in blobs:
+        origin = np.amin(blob, axis=0)
+        bounds = np.amax(blob, axis=0)
+        delta = bounds - origin # Height and Width
+        area = np.prod(delta)
+        # Filter background blob. Blob must be < 25% of the entire image area.
+        if area / im_area < 0.25:
+            bounds.append({
+                'origin': list(origin.astype(float)),
+                'bounds': list(bounds.astype(float)),
+                'delta': list(delta.astype(float)),
+                'area': int(area),
+            })
+    return bounds
