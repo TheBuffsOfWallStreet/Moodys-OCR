@@ -1,6 +1,7 @@
 import os
 import re
 import getpass
+import argparse
 from pymongo import MongoClient
 
 def parse_OCR(path, page, year, brightness=60):
@@ -54,3 +55,14 @@ def insert_year(path, year):
                 except Exception as e:
                     print(f)
                     print(e)
+
+if __name__ == "__main__":
+    '''
+    Parse command line arguements for file path and year of book being parsed
+    Parse data for that year and insert into database
+    '''
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", help="path to parent directory of OCR files", type=str)
+    parser.add_argument("year", help="year of the book being parsed", type=int)
+    args = parser.parse_args()
+    
