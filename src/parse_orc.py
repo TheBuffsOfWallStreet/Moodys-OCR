@@ -65,4 +65,4 @@ if __name__ == "__main__":
     parser.add_argument("path", help="path to parent directory of OCR files", type=str)
     parser.add_argument("year", help="year of the book being parsed", type=int)
     args = parser.parse_args()
-    
+    insert_year(args.path, args.year)
