@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import getpass
 import argparse
 from pymongo import MongoClient
@@ -65,4 +66,7 @@ if __name__ == "__main__":
     parser.add_argument("path", help="path to parent directory of OCR files", type=str)
     parser.add_argument("year", help="year of the book being parsed", type=int)
     args = parser.parse_args()
+    start_time = time.time()
     insert_year(args.path, args.year)
+    end_time = time.time()
+    print("Runtime: {} sec".format(end_time-start_time))
