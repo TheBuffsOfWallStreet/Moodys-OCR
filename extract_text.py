@@ -1,6 +1,11 @@
 import numpy as np
 import re
 import pandas as pd
+from functools import cmp_to_key
+import itertools
+
+
+
 start = '/scratch/summit/diga9728/Moodys/Industrials/OCRrun1944/'
 zay = '/194/OCR.micro.19440021-0035.zay'
 
@@ -26,6 +31,23 @@ find_opt(res,term_dict)
 prev_y = 0
 prev_x = 0
 
+def compare(word1,word2):
+    y1_value = int(word1[3])
+    x1_value_l = int(word1[1])
+    y2_value = int(word2[3])
+    x2_value_l = int(word2[1])
+    if(abs(y1_value-y2_value) < 80 ):
+        return x1_value_l - x2_value_l
+
+    else:
+        return y1_value-y2_value
+
+###for .day only
+prev_y = 0
+prev_x = 0
+num_cols= 1
+
+
 
 
 def find_bucket(row):
@@ -35,17 +57,14 @@ def find_bucket(row):
     y_value = int(row[3])
     x_value_l = int(row[1])
     x_value_r = int(row[2])
-    word = row[-1]
+    word = row[-2]
     res = ''
-    if(abs(y_value-prev_y) < 75 ):
+    if(abs(y_value-prev_y) < 80 ):
         if(abs(x_value_l-prev_x) < 300):
             res = word
         else:
             res = '\t' + word
 
-    elif(abs(y_value-prev_y) > 9000):
-        res= '\n\nColumn'+'\n\n'+word
-        num_cols+=1
     else:
         res= '\n'+word
 
@@ -54,10 +73,11 @@ def find_bucket(row):
     return res
 
 
+
 def organize_day(images):
     x = 0
     #create an array of dictionaries, each element the text from given brightness level
-    brightness_level = [{} for sub in range(100)]
+    brightness_level = [{} for sub in range(200)]
     for i in range(len(images)):
         num_cols = 1
         image = images[i]
@@ -70,11 +90,30 @@ def organize_day(images):
                 words = image.strip()
                 words = words.split('\n')
                 dfWords = pd.DataFrame([sub.split(",") for sub in words])
+             # find delta y between words to find new column markers
+                dfWords = dfWords.astype({3:'int'})
+                dfWords['yDif'] = dfWords[3].diff()
+                col_breaks = dfWords.loc[dfWords['yDif'] < -9000].index.values
 
-                #create dictionary where keys are the lines y1 values
+                #if there are > 1 column, take each column, and sort it
                 res = []
-                #go through word df and append word data to bucket it is closest to
-                dfWords.apply(lambda x: res.append(find_bucket( x.to_list()))  , axis = 1)
+                if(len(col_breaks)>0):
+                    prev = 0
+                    for c in col_breaks:
+                        holder = []
+                        col = dfWords.iloc[prev:c].values.tolist()
+                        colDF = pd.DataFrame(sorted(col, key=cmp_to_key(compare)))
+                        colDF.apply(lambda x: holder.append(find_bucket( x.to_list()))  , axis = 1)
+                        res.append(holder)
+                        prev = c
+
+                    holder = []
+                    col = dfWords.iloc[col_breaks[-1]:].values.tolist()
+                    colDF = pd.DataFrame(sorted(col, key=cmp_to_key(compare)))
+                    colDF.apply(lambda x: holder.append(find_bucket( x.to_list()))  , axis = 1)
+                    res.append(holder)
+                else:
+                    dfWords.apply(lambda x: res.append(find_bucket( x.to_list()))  , axis = 1)
                 brightness_level[x] = res
                 x+=1
 
@@ -86,10 +125,12 @@ def organize_day(images):
 
 
 
+
+
 def organize_dat(images):
     x = 0
     #create an array of dictionaries, each element the text from given brightness level
-    brightness_level = [{} for sub in range(100)]
+    brightness_level = [{} for sub in range(200)]
     for i in range(len(images)):
         num_cols = 1
         image = images[i]
@@ -108,12 +149,38 @@ def organize_dat(images):
                     num_lines = lines.count('\n')+1
                     lines = lines.split('\n')
                     words = words.split('\n')
-                    dfWords = pd.DataFrame([sub.split(",") for sub in words])
+                    words = [sub.split(",") for sub in words]
+                    dfWords = pd.DataFrame(words)
+
+                    # find delta y between words to find new column markers
+                    dfWords = dfWords.astype({3:'int'})
+                    dfWords['yDif'] = dfWords[3].diff()
+                    col_breaks = dfWords.loc[dfWords['yDif'] < -9000].index.values
+
+                    #if there are > 1 column, take each column, and sort it
+                    res = []
+                    if(len(col_breaks)>0):
+                        prev = 0
+                        for c in col_breaks:
+                            holder = []
+                            col = dfWords.iloc[prev:c].values.tolist()
+                            colDF = pd.DataFrame(sorted(col, key=cmp_to_key(compare)))
+                            colDF.apply(lambda x: holder.append(find_bucket( x.to_list()))  , axis = 1)
+                            res.append(holder)
+                            prev = c
+
+                        holder = []
+                        col = dfWords.iloc[col_breaks[-1]:].values.tolist()
+                        colDF = pd.DataFrame(sorted(col, key=cmp_to_key(compare)))
+                        colDF.apply(lambda x: holder.append(find_bucket( x.to_list()))  , axis = 1)
+                        res.append(holder)
+                    else:
+                        dfWords.apply(lambda x: res.append(find_bucket( x.to_list()))  , axis = 1)
+
 
                     #create dictionary where keys are the lines y1 values
-                    res = []
+
                     #go through word df and append word data to bucket it is closest to
-                    dfWords.apply(lambda x: res.append(find_bucket( x.to_list()))  , axis = 1)
                     brightness_level[x] = res
                     x+=1
 
@@ -121,7 +188,6 @@ def organize_dat(images):
                 print(e)
 
     return brightness_level
-
 
 
 
