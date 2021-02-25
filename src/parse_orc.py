@@ -5,7 +5,7 @@ import getpass
 import argparse
 from pymongo import MongoClient
 
-def parse_OCR(path, page, year, brightness=60):
+def parse_OCR(path, page, year, brightness):
     '''
     Takes in a file path to a .zay file, page number, and year (optionally brightness)
     Returns a list of dictionaries each representing a ocr word detection
@@ -27,9 +27,26 @@ def parse_OCR(path, page, year, brightness=60):
                     'year': year
                 }
                 res.append(entry)
+        else:
+            ocr_runs = re.split('[\/[A-Za-z0-9-.]+\/*\.day', file.read())
+            for i, run in enumerate(ocr_runs):
+                word_boxes = run.strip().split('\n')
+                for w in word_boxes:
+                    data = w.split(',')
+                    entry = {
+                        'x_1': int(data[1]),
+                        'x_2': int(data[2]),
+                        'y_1': int(data[3]),
+                        'y_2': int(data[4]),
+                        'text': data[-2],
+                        'brigtness': i,
+                        'page': page,
+                        'year': year
+                    }
+                    res.append(entry)
     return res
 
-def insert_year(path, year):
+def insert_year(path, year, brightness):
     '''
     Input directory path to OCR data and year of book
     Ex:
@@ -53,7 +70,7 @@ def insert_year(path, year):
                 print(f)
                 try:
                     page = int(f[-8:-4])
-                    docs = parse_OCR(os.path.join(sub_path, f), page, year)
+                    docs = parse_OCR(os.path.join(sub_path, f, brightness), page, year)
                     db.insert_many(docs)
                 except Exception as e:
                     print(f)
@@ -67,8 +84,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("path", help="path to parent directory of OCR files", type=str)
     parser.add_argument("year", help="year of the book being parsed", type=int)
+    parser.add_argument("-b", dest="brightness", default=None, help="brightness level to be used if none given will use all", type=int)
     args = parser.parse_args()
     start_time = time.time()
-    insert_year(args.path, args.year)
+    insert_year(args.path, args.year, args.brightness)
     end_time = time.time()
     print("Runtime: {} sec".format(end_time-start_time))
