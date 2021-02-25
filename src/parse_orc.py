@@ -12,20 +12,21 @@ def parse_OCR(path, page, year, brightness=60):
     '''
     res = []
     with open(path) as file:
-        word_boxes = re.split('[\/[A-Za-z0-9-.]+\/*\.day', file.read())[brightness-1].strip().split('\n')
-        for w in word_boxes:
-            data = w.split(',')
-            entry = {
-                'x_1': int(data[1]),
-                'x_2': int(data[2]),
-                'y_1': int(data[3]),
-                'y_2': int(data[4]),
-                'text': data[-2],
-                'brigtness': brightness,
-                'page': page,
-                'year': year
-            }
-            res.append(entry)
+        if brightness:
+            word_boxes = re.split('[\/[A-Za-z0-9-.]+\/*\.day', file.read())[brightness-1].strip().split('\n')
+            for w in word_boxes:
+                data = w.split(',')
+                entry = {
+                    'x_1': int(data[1]),
+                    'x_2': int(data[2]),
+                    'y_1': int(data[3]),
+                    'y_2': int(data[4]),
+                    'text': data[-2],
+                    'brigtness': brightness,
+                    'page': page,
+                    'year': year
+                }
+                res.append(entry)
     return res
 
 def insert_year(path, year):
