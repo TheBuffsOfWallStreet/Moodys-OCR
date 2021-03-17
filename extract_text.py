@@ -261,10 +261,10 @@ if __name__ == "__main__":
     
     year = str(sys.argv[1])
     #pwd = getpass.getpass("Password: ")
-    pwd = 'efficientmarkets'
-    db = MongoClient(host="royceschultz.com", port=27017, username="finlab_beta", password=pwd,   authSource="users").finlab_dev.trevino_MoodysOCR
-
-
+    # pwd = 'efficientmarkets'
+    # db = MongoClient(host="royceschultz.com", port=27017, username="finlab_beta", password=pwd,   authSource="users").finlab_dev.trevino_MoodysOCR
+    fout = open('1930.json', 'w')
+    output = []
 
     #get directory and parse all pages in directory
     path = r'/scratch/summit/diga9728/Moodys/Industrials/OCRrun'+year
@@ -320,9 +320,12 @@ if __name__ == "__main__":
 
 
                 entry = {'_id': ident,'optimum_brightness': opt_brightness, 'text_blob': optimum, 'companies': companies, 'year': year, 'page': page_counter}
-                db.insert_one(entry)
+                # db.insert_one(entry)
+                output.append(entry)
+                
             page_counter+=1
 
+    json.dump(output, fout)
 
 
     # #find companies by words that are in all caps
