@@ -6,6 +6,7 @@ import numpy as np
 import re
 import pandas as pd
 import os
+import sys
 
 
 
@@ -106,6 +107,7 @@ def organize_day(images):
 
                 
     return brightness_level
+
 
 ####for .dat files
 def organize_dat(images):
@@ -255,94 +257,99 @@ def find_caps(text):
     return list(companies)
 
 
-
-pwd = getpass.getpass("Password: ")
-db = MongoClient(host="royceschultz.com", port=27017, username="finlab_beta", password=pwd, authSource="users").finlab_dev.trevino_MoodysOCR
-
-
-
-# path = '/scratch/summit/diga9728/Moodys/Industrials/OCRrun1941/133/OCR.micro.19410015-0028.zay'
-
-#get directory and parse all pages in directory
-path = r'/scratch/summit/diga9728/Moodys/Industrials/OCRrun1929'
-
-#dictionaries to store company/page info
-comp_dict = {}
-page_dict = {}
-
-#dirs is path to OCRrunXXXX
-dirs = os.listdir(path)
-sub_dirs = []
-
-#find all subdirs that contain only 3 numbers which are page scans
-for d in dirs:
-    match = re.fullmatch('[0-9]{3}', d)
-    if match:
-        sub_dirs.append(match.group(0))
-
-sub_dirs = sorted(sub_dirs)
-page_counter = 1
+if __name__ == "__main__":
     
-#create paths by joining orignal path and then subdirectory then scan all files in that subdirectory
-for d in sub_dirs:
-    sub_path = os.path.join(path, d)
-    for entry in os.scandir(sub_path):
-        print(page_counter, end='\r')
-        curr_path = entry.path
-        ident = curr_path[-17:-4]
-        #check if page has been processed before
-        if (db.count_documents({'_id': ident}) == 0):
-            year = int(ident[:4])
-
-            #open page file and split images at lines containing .day
-            file = open(curr_path, 'r').read()
-
-            #some files have line info, so we have two different methods to read depending on file contents
-            if(len(re.findall('[\/[A-Za-z0-9-._]+\/*\.dat', file)) > 1):
-                images = re.split('[\/[A-Za-z0-9-._]+\/*\.dat', file)
-                brightness_levels = organize_dat(images)
-            else:
-                images = re.split('[\/[A-Za-z0-9-._]+\/*\.day', file)
-                brightness_levels = organize_day(images)
-
-            #get all ngrams from the 99 iterations and each text blob from the 99 iterations
-            term_dict,res = assemble(brightness_levels)
-
-            #find optimum brightness and correlating blob
-            opt_brightness,optimum = find_opt(res,term_dict)
-
-            #identify company names
-            companies = find_caps(optimum)
+    year = str(sys.argv[1])
+    #pwd = getpass.getpass("Password: ")
+    pwd = 'efficientmarkets'
+    db = MongoClient(host="royceschultz.com", port=27017, username="finlab_beta", password=pwd,   authSource="users").finlab_dev.trevino_MoodysOCR
 
 
-            entry = {'_id': ident,'optimum_brightness': opt_brightness, 'text_blob': optimum, 'companies': companies, 'year': year, 'page': page_counter}
-            db.insert_one(entry)
-        page_counter+=1
+
+    #get directory and parse all pages in directory
+    path = r'/scratch/summit/diga9728/Moodys/Industrials/OCRrun'+year
+    print(path)
+
+    #dictionaries to store company/page info
+    comp_dict = {}
+    page_dict = {}
+
+    #dirs is path to OCRrunXXXX
+    dirs = os.listdir(path)
+    sub_dirs = []
+
+    #find all subdirs that contain only 3 numbers which are page scans
+    for d in dirs:
+        match = re.fullmatch('[0-9]{3}', d)
+        if match:
+            sub_dirs.append(match.group(0))
+
+    sub_dirs = sorted(sub_dirs)
+    page_counter = 1
+
+    #create paths by joining orignal path and then subdirectory then scan all files in that subdirectory
+    for d in sub_dirs:
+        sub_path = os.path.join(path, d)
+        for entry in os.scandir(sub_path):
+            print(page_counter, end='\r')
+            curr_path = entry.path
+            ident = curr_path[-17:-4]
+            #check if page has been processed before
+            if (db.count_documents({'_id': ident}) == 0):
+                year = int(year)
+
+                #open page file and split images at lines containing .day
+                file = open(curr_path, 'r').read()
+
+                #some files have line info, so we have two different methods to read depending on file contents
+                if(len(re.findall('[\/[A-Za-z0-9-._]+\/*\.dat', file)) > 1):
+                    images = re.split('[\/[A-Za-z0-9-._]+\/*\.dat', file)
+                    brightness_levels = organize_dat(images)
+                else:
+                    images = re.split('[\/[A-Za-z0-9-._]+\/*\.day', file)
+                    brightness_levels = organize_day(images)
+
+                #get all ngrams from the 99 iterations and each text blob from the 99 iterations
+                term_dict,res = assemble(brightness_levels)
+
+                #find optimum brightness and correlating blob
+                opt_brightness,optimum = find_opt(res,term_dict)
+
+                #identify company names
+                companies = find_caps(optimum)
 
 
-    
-# #find companies by words that are in all caps
-# companies = find_caps(optimum)
+                entry = {'_id': ident,'optimum_brightness': opt_brightness, 'text_blob': optimum, 'companies': companies, 'year': year, 'page': page_counter}
+                db.insert_one(entry)
+            page_counter+=1
 
-# #get indices of company names in text string
-# companies = sorted([(optimum.find(x),x) for x in companies])
-# companies.append((len(optimum),'holder'))
 
-# #try to parse for history and officers section of multiple companies on page
-# if(len(companies) > 1):
-#     for x in range(len(companies)-1):
-#         first = companies[x]
-#         second = companies[x+1]
-#         company_text = optimum[first[0]: second[0]]
-#         history = company_text[company_text.find('History'):company_text.find('Officers')]
-#         officers = company_text[company_text.find('Officers'):company_text.find('Directors')]
-#         comp_dict[first[1].strip()] = {'history': history, 'officers':officers}
 
-# #only one company found on page
-# elif(len(companies) == 2):
-#     first = companies[0]
-#     comp_dict[first[1]] = optimum[first[0]: len(optimum)]
+    # #find companies by words that are in all caps
+    # companies = find_caps(optimum)
+
+    # #get indices of company names in text string
+    # companies = sorted([(optimum.find(x),x) for x in companies])
+    # companies.append((len(optimum),'holder'))
+
+    # #try to parse for history and officers section of multiple companies on page
+    # if(len(companies) > 1):
+    #     for x in range(len(companies)-1):
+    #         first = companies[x]
+    #         second = companies[x+1]
+    #         company_text = optimum[first[0]: second[0]]
+    #         history = company_text[company_text.find('History'):company_text.find('Officers')]
+    #         officers = company_text[company_text.find('Officers'):company_text.find('Directors')]
+    #         comp_dict[first[1].strip()] = {'history': history, 'officers':officers}
+
+    # #only one company found on page
+    # elif(len(companies) == 2):
+    #     first = companies[0]
+    #     comp_dict[first[1]] = optimum[first[0]: len(optimum)]
 
         
     
 
+
+
+    
