@@ -7,6 +7,7 @@ import re
 import pandas as pd
 import os
 import sys
+import json
 
 
 
@@ -295,33 +296,33 @@ if __name__ == "__main__":
             curr_path = entry.path
             ident = curr_path[-17:-4]
             #check if page has been processed before
-            if (db.count_documents({'_id': ident}) == 0):
-                year = int(year)
+            # if (db.count_documents({'_id': ident}) == 0):
+            year = int(year)
 
-                #open page file and split images at lines containing .day
-                file = open(curr_path, 'r').read()
+            #open page file and split images at lines containing .day
+            file = open(curr_path, 'r').read()
 
-                #some files have line info, so we have two different methods to read depending on file contents
-                if(len(re.findall('[\/[A-Za-z0-9-._]+\/*\.dat', file)) > 1):
-                    images = re.split('[\/[A-Za-z0-9-._]+\/*\.dat', file)
-                    brightness_levels = organize_dat(images)
-                else:
-                    images = re.split('[\/[A-Za-z0-9-._]+\/*\.day', file)
-                    brightness_levels = organize_day(images)
+            #some files have line info, so we have two different methods to read depending on file contents
+            if(len(re.findall('[\/[A-Za-z0-9-._]+\/*\.dat', file)) > 1):
+                images = re.split('[\/[A-Za-z0-9-._]+\/*\.dat', file)
+                brightness_levels = organize_dat(images)
+            else:
+                images = re.split('[\/[A-Za-z0-9-._]+\/*\.day', file)
+                brightness_levels = organize_day(images)
 
-                #get all ngrams from the 99 iterations and each text blob from the 99 iterations
-                term_dict,res = assemble(brightness_levels)
+            #get all ngrams from the 99 iterations and each text blob from the 99 iterations
+            term_dict,res = assemble(brightness_levels)
 
-                #find optimum brightness and correlating blob
-                opt_brightness,optimum = find_opt(res,term_dict)
+            #find optimum brightness and correlating blob
+            opt_brightness,optimum = find_opt(res,term_dict)
 
-                #identify company names
-                companies = find_caps(optimum)
+            #identify company names
+            companies = find_caps(optimum)
 
 
-                entry = {'_id': ident,'optimum_brightness': opt_brightness, 'text_blob': optimum, 'companies': companies, 'year': year, 'page': page_counter}
-                # db.insert_one(entry)
-                output.append(entry)
+            entry = {'_id': ident,'optimum_brightness': opt_brightness, 'text_blob': optimum, 'companies': companies, 'year': year, 'page': page_counter}
+            # db.insert_one(entry)
+            output.append(entry)
                 
             page_counter+=1
 
