@@ -7,6 +7,11 @@ pwd = getpass.getpass("Password: ")
 db = MongoClient(host="royceschultz.com", port=27017, username="finlab_beta", password=pwd, authSource="users").finlab_beta
 
 def count_eval():
+    '''
+    Compares the counts of the detections and headers per page. 
+    Returns true positive, false positive, false negative, and correct page rates.
+    This method assumes that every detection is correct up to the limit of correct headers per page.
+    '''
     col = db.MoodysValidateHeaders
     headers = list(col.find())
     correct = 0
