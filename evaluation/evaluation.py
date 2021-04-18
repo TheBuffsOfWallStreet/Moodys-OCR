@@ -1,9 +1,12 @@
 import json
 import getpass
+import numpy as np
 from pymongo import MongoClient
+import matplotlib.pyplot as plt
 
 
-pwd = getpass.getpass("Password: ")
+# pwd = getpass.getpass("Password: ")
+pwd = "efficientmarkets"
 db = MongoClient(host="royceschultz.com", port=27017, username="finlab_beta", password=pwd, authSource="users").finlab_beta
 
 def count_eval():
@@ -34,6 +37,49 @@ def count_eval():
     page_rate = correct_pages/len(headers)
     return tp_rate, fp_rate, fn_rate, page_rate
 
+def w_man_dist(c1, c2, wx=0.1, wy=0.9):
+    '''
+    Calculates the weighted manhattan distance between the
+    two imput coordinates
+    '''
+    return wx*abs(c1[0]-c2[0]) + wy*abs(c1[1]-c2[1])
+
+def det_center(detection):
+    '''
+    Calculates center of detection
+    '''
+    x = np.mean([detection['min'][0], detection['max'][0]])
+    y = np.mean([detection['min'][1], detection['max'][1]])
+    return [x, y]
+
+def dist_eval(dist_tol=60, sample_size=None):
+    '''
+    If a sample_size is given will take a random sample of gold headers. If not will grab all the 
+    gold headers. Then, the gold headers are compared with detections using a weighted manhattan
+    distance. Returns the count of golden headers that match a detection, number of golden headers,
+    and list of minimum distances of each header to detections.
+    '''
+    correct = 0
+    n = 0
+    m_dist = []
+    if sample_size:
+        gold_headers = list(db.MoodysGoldHeaders.aggregate([{"$sample": {"size": sample_size}}]))
+    else:
+        gold_headers = list(db.MoodysGoldHeaders.find())
+    for g in gold_headers:
+        detections = db.MoodysDetectionBoxes.find_one({'_id': g['_id']})
+        for h in g['headers']:
+            if detections and detections['detections']:
+                distances = [w_man_dist(h['raw_center'], det_center(d)) for d in detections['detections']]
+                m_dist.append(min(distances))
+                if min(distances) < dist_tol:
+                    correct += 1
+            n += 1
+    return correct, n, m_dist
 
 if __name__ == "__main__":
     print(count_eval())
+    correct, n, distances = dist_eval(sample_size=1000)
+    print(correct/n)
+    plt.hist(distances, bins=25)
+    plt.show()
