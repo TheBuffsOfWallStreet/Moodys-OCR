@@ -70,16 +70,19 @@ def dist_eval(dist_tol=60, sample_size=None):
         detections = db.MoodysDetectionBoxes.find_one({'_id': g['_id']})
         for h in g['headers']:
             if detections and detections['detections']:
-                distances = [w_man_dist(h['raw_center'], det_center(d)) for d in detections['detections']]
-                m_dist.append(min(distances))
-                if min(distances) < dist_tol:
-                    correct += 1
+                try:
+                    distances = [w_man_dist(h['raw_center'], det_center(d)) for d in detections['detections']]
+                    m_dist.append(min(distances))
+                    if min(distances) < dist_tol:
+                        correct += 1
+                except KeyError:
+                    pass
             n += 1
     return correct, n, m_dist
 
 if __name__ == "__main__":
     print(count_eval())
-    correct, n, distances = dist_eval(sample_size=1000)
+    correct, n, distances = dist_eval()
     print(correct/n)
     plt.hist(distances, bins=25)
     plt.show()
