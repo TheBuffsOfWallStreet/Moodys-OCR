@@ -5,8 +5,7 @@ from pymongo import MongoClient
 import matplotlib.pyplot as plt
 
 
-# pwd = getpass.getpass("Password: ")
-pwd = "efficientmarkets"
+pwd = getpass.getpass("Password: ")
 db = MongoClient(host="royceschultz.com", port=27017, username="finlab_beta", password=pwd, authSource="users").finlab_beta
 
 def count_eval():
