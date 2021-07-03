@@ -1,0 +1,4 @@
+numpy
+PIL
+cv2
+keras_ocr
